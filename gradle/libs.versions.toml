@@ -1,5 +1,6 @@
 [versions]
 agp = "8.7.3"
+androidMapsUtils = "2.3.0"
 kotlin = "2.0.21"
 coreKtx = "1.15.0"
 junit = "4.13.2"
@@ -11,12 +12,16 @@ composeBom = "2024.12.01"
 googleGmsGoogleServices = "4.4.2"
 firebaseAuth = "23.1.0"
 firebaseBom = "33.7.0"
+playServicesLocation = "21.3.0"
+playServicesMaps = "19.0.0"
 runtimeLivedata = "1.7.6"
 navigationCompose = "2.8.5"
 firebaseDatabase = "21.0.0"
+firebaseFirestore = "25.1.1"
 
 [libraries]
 # Android Core Libraries
+android-maps-utils = { module = "com.google.maps.android:android-maps-utils", version.ref = "androidMapsUtils" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 
 # JUnit and Testing Libraries
@@ -45,6 +50,9 @@ firebase-database = { group = "com.google.firebase", name = "firebase-database",
 # Compose Runtime and Navigation Libraries
 androidx-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtimeLivedata" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
+play-services-maps = { module = "com.google.android.gms:play-services-maps", version.ref = "playServicesMaps" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

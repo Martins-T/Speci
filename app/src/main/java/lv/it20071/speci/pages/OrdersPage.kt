@@ -1,8 +1,11 @@
 package lv.it20071.speci.pages
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -18,6 +21,7 @@ import lv.it20071.speci.AuthViewModel
 import lv.it20071.speci.AuthenticatedPageContent
 import lv.it20071.speci.UsersViewModel
 
+
 // Data Model
 data class Order(
     val personName: String = "",
@@ -31,22 +35,25 @@ data class Order(
 // Composables
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OrderCard(order: Order) {
+fun OrderCard(order: Order, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
+            .clickable { onClick() }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = order.personName, style = MaterialTheme.typography.titleMedium)
-            Text(text = "Vērtējums: ${order.rating}")
+            Text(text = "Pasūtītāja vērtējums: ${order.rating}")
             Text(text = "Uzdevums: ${order.task}")
             Text(text = "Vieta: ${order.location}")
             Text(text = "Termiņš: ${order.dueDate}")
-            Text(text = "Cena: €${order.currentPrice}")
+            Text(text = "Budžets: €${order.currentPrice}")
         }
     }
 }
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,28 +67,46 @@ fun OrdersPage(
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
     AuthenticatedPageContent(navController, authViewModel, currentRoute) { innerPadding ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Pasūtījumu saraksts",
-                fontSize = 32.sp,
-                modifier = Modifier.padding(16.dp)
-            )
+        Scaffold(
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    onClick = { navController.navigate("create_order") },
+                    text = { Text("Izveidot pasūtījumu") },
+                    icon = { Icon(Icons.Default.Add, contentDescription = "Izveidot pasūtījumu") }
+                )
+            },
+            modifier = modifier.padding(innerPadding)
+        ) { scaffoldPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(scaffoldPadding),
+                verticalArrangement = Arrangement.Top,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Pasūtījumi",
+                    fontSize = 32.sp,
+                    modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally),
+                    color = MaterialTheme.colorScheme.primary
+                )
 
-            if (users.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(users) { order ->
-                        OrderCard(order)
+                if (users.isEmpty()) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(users) { order ->
+                            OrderCard(order = order, onClick = {
+                                navController.navigate("order_details/${order.personName}/${order.rating}/${order.task}/${order.location}/${order.dueDate}/${order.currentPrice}")
+                            })
+                        }
                     }
+
                 }
             }
         }
     }
 }
+
+
+

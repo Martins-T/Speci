@@ -21,11 +21,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import lv.it20071.speci.pages.OrdersPage
+import androidx.navigation.navArgument
+import lv.it20071.speci.pages.CreateOrderPage
+import lv.it20071.speci.pages.EditProfilePage
 import lv.it20071.speci.pages.LoginPage
+import lv.it20071.speci.pages.OrderDetailsPage
+import lv.it20071.speci.pages.OrdersPage
 import lv.it20071.speci.pages.ProfilePage
 import lv.it20071.speci.pages.SignupPage
 import lv.it20071.speci.pages.SpecialistsPage
@@ -35,9 +40,7 @@ fun MyAppNavigation(modifier: Modifier = Modifier,authViewModel: AuthViewModel) 
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = "login", builder = {
-        composable("login"){
-            LoginPage(modifier,navController,authViewModel)
-        }
+        composable("login"){ LoginPage(modifier,navController,authViewModel) }
         composable("signup"){
             SignupPage(modifier,navController,authViewModel)
         }
@@ -50,7 +53,46 @@ fun MyAppNavigation(modifier: Modifier = Modifier,authViewModel: AuthViewModel) 
         composable("profile"){
             ProfilePage(modifier,navController,authViewModel)
         }
+        composable("edit_profile") {
+            EditProfilePage(
+                navController = navController,
+                authViewModel = authViewModel
+            )
+        }
+        composable("create_order") {
+            CreateOrderPage(
+                navController = navController,
+                authViewModel = authViewModel
+            )
+        }
+        composable(
+            route = "order_details/{personName}/{rating}/{task}/{location}/{dueDate}/{currentPrice}",
+            arguments = listOf(
+                navArgument("personName") { type = NavType.StringType },
+                navArgument("rating") { type = NavType.FloatType },
+                navArgument("task") { type = NavType.StringType },
+                navArgument("location") { type = NavType.StringType },
+                navArgument("dueDate") { type = NavType.StringType },
+                navArgument("currentPrice") { type = NavType.FloatType }
+            )
+        ) { backStackEntry ->
+            val personName = backStackEntry.arguments?.getString("personName") ?: ""
+            val rating = backStackEntry.arguments?.getFloat("rating") ?: 0f
+            val task = backStackEntry.arguments?.getString("task") ?: ""
+            val location = backStackEntry.arguments?.getString("location") ?: ""
+            val dueDate = backStackEntry.arguments?.getString("dueDate") ?: ""
+            val currentPrice = backStackEntry.arguments?.getFloat("currentPrice")?.toDouble() ?: 0.0
 
+            OrderDetailsPage(
+                navController = navController,
+                personName = personName,
+                rating = rating,
+                task = task,
+                location = location,
+                dueDate = dueDate,
+                currentPrice = currentPrice
+            )
+        }
     })
 }
 

@@ -17,6 +17,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Fetch MAPS_API_KEY from local.properties
+        val mapsApiKey: String? = project.findProperty("MAPS_API_KEY") as String?
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
     }
 
     buildTypes {
@@ -40,6 +44,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -64,11 +69,19 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
 
+    // Firebase dependencies
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
 
+    // Navigation and LiveData
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.navigation.compose)
+
+    // Google Maps and Location Services
+    implementation(libs.android.maps.utils)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
+    implementation(libs.firebase.firestore)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
