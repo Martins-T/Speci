@@ -33,108 +33,114 @@ import lv.it20071.speci.pages.OrderDetailsPage
 import lv.it20071.speci.pages.OrdersPage
 import lv.it20071.speci.pages.ProfilePage
 import lv.it20071.speci.pages.SignupPage
+import lv.it20071.speci.pages.SkillsPage
+import lv.it20071.speci.pages.SpecialistProfilePage
 import lv.it20071.speci.pages.SpecialistsPage
+import lv.it20071.speci.viewModels.AuthState
+import lv.it20071.speci.viewModels.AuthViewModel
 
 @Composable
-fun MyAppNavigation(modifier: Modifier = Modifier,authViewModel: AuthViewModel) {
+fun MyAppNavigation(
+    modifier: Modifier = Modifier,
+    authViewModel: AuthViewModel
+) {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "login", builder = {
-        composable("login"){ LoginPage(modifier,navController,authViewModel) }
-        composable("signup"){
-            SignupPage(modifier,navController,authViewModel)
+    NavHost(navController = navController, startDestination = "login") {
+        composable("login") {
+            LoginPage(modifier, navController, authViewModel)
         }
-        composable("orders"){
-            OrdersPage(modifier,navController,authViewModel)
+        composable("signup") {
+            SignupPage(modifier, navController, authViewModel)
         }
-        composable("specialists"){
-            SpecialistsPage(modifier,navController,authViewModel)
+        composable("orders") {
+            OrdersPage(modifier, navController, authViewModel)
         }
-        composable("profile"){
-            ProfilePage(modifier,navController,authViewModel)
+        composable("specialists") {
+            SpecialistsPage(modifier, navController, authViewModel)
+        }
+        composable("profile") {
+            ProfilePage(modifier, navController, authViewModel)
         }
         composable("edit_profile") {
-            EditProfilePage(
-                navController = navController,
-                authViewModel = authViewModel
-            )
+            EditProfilePage(navController = navController, authViewModel = authViewModel)
         }
         composable("create_order") {
-            CreateOrderPage(
+            CreateOrderPage(navController = navController, authViewModel = authViewModel)
+        }
+        composable("order_details/{orderId}") { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId")
+            if (orderId != null) {
+                OrderDetailsPage(
+                    navController = navController,
+                    orderId = orderId,
+                    authViewModel = authViewModel
+                )
+            } else {
+                LaunchedEffect(Unit) {
+                    navController.popBackStack()
+                }
+            }
+        }
+        composable("skills") {
+            SkillsPage(navController = navController, authViewModel = authViewModel)
+        }
+        composable(
+            "specialist_profile/{specialistId}",
+            arguments = listOf(navArgument("specialistId") {
+                type = NavType.StringType
+            })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("specialistId")!!
+            SpecialistProfilePage(
                 navController = navController,
+                specialistId = id,
                 authViewModel = authViewModel
             )
         }
-        composable(
-            route = "order_details/{personName}/{rating}/{task}/{location}/{dueDate}/{currentPrice}",
-            arguments = listOf(
-                navArgument("personName") { type = NavType.StringType },
-                navArgument("rating") { type = NavType.FloatType },
-                navArgument("task") { type = NavType.StringType },
-                navArgument("location") { type = NavType.StringType },
-                navArgument("dueDate") { type = NavType.StringType },
-                navArgument("currentPrice") { type = NavType.FloatType }
-            )
-        ) { backStackEntry ->
-            val personName = backStackEntry.arguments?.getString("personName") ?: ""
-            val rating = backStackEntry.arguments?.getFloat("rating") ?: 0f
-            val task = backStackEntry.arguments?.getString("task") ?: ""
-            val location = backStackEntry.arguments?.getString("location") ?: ""
-            val dueDate = backStackEntry.arguments?.getString("dueDate") ?: ""
-            val currentPrice = backStackEntry.arguments?.getFloat("currentPrice")?.toDouble() ?: 0.0
-
-            OrderDetailsPage(
-                navController = navController,
-                personName = personName,
-                rating = rating,
-                task = task,
-                location = location,
-                dueDate = dueDate,
-                currentPrice = currentPrice
-            )
-        }
-    })
+    }
 }
 
-
 @Composable
-fun MyBottomNavigation(navController: NavHostController, currentRoute: String?) {
+fun MyBottomNavigation(
+    navController: NavHostController,
+    currentRoute: String?
+) {
     var selectedItemIndex by remember { mutableStateOf(0) }
-    val items = listOf("orders", "specialists", "profile") // Update with route names
+    val items = listOf("orders", "specialists", "profile")
 
     NavigationBar {
         items.forEachIndexed { index, route ->
             NavigationBarItem(
                 icon = {
-                    when (route) {
-                        "orders" -> Icon(Icons.Filled.Menu, contentDescription = "Pasūtījumi")
-                        "specialists" -> Icon(Icons.Filled.Build, contentDescription = "Speciālisti")
-                        "profile" -> Icon(Icons.Filled.Person, contentDescription = "Mans profils")
-                        else -> {} // Handle unexpected route if needed
-                    }
+                    Icon(
+                        imageVector = when (route) {
+                            "orders" -> Icons.Filled.Menu
+                            "specialists" -> Icons.Filled.Build
+                            "profile" -> Icons.Filled.Person
+                            else -> Icons.Filled.Menu
+                        },
+                        contentDescription = route
+                    )
                 },
-                label = { Text(
-                    when (route) {
-                        "orders" -> "Pasūtījumi"
-                        "specialists" -> "Speciālisti"
-                        "profile" -> "Mans profils"
-                        else -> ""
-                    }
-                ) },
+                label = {
+                    Text(
+                        when (route) {
+                            "orders" -> "Pasūtījumi"
+                            "specialists" -> "Speciālisti"
+                            "profile" -> "Mans profils"
+                            else -> ""
+                        }
+                    )
+                },
                 selected = currentRoute == route,
                 onClick = {
                     selectedItemIndex = index
                     navController.navigate(route) {
-                        // Pop up to the root destination of the graph to
-                        // avoid building up a large stack of destinations
-                        // on the back stack as users select items
                         popUpTo(navController.graph.findStartDestination().id) {
                             saveState = true
                         }
-                        // Avoid multiple copies of the same destination when
-                        // reselecting the same item
                         launchSingleTop = true
-                        // Restore state when reselecting a previously selected item
                         restoreState = true
                     }
                 }
@@ -148,21 +154,22 @@ fun MyBottomNavigation(navController: NavHostController, currentRoute: String?) 
 fun AuthenticatedPageContent(
     navController: NavHostController,
     authViewModel: AuthViewModel,
-    currentRoute: String?, // Add currentRoute parameter
+    currentRoute: String?,
     content: @Composable (PaddingValues) -> Unit
 ) {
-    val authState = authViewModel.authState.observeAsState()
+    val authState by authViewModel.authState.observeAsState()
 
-    LaunchedEffect(authState.value) {
-        when (authState.value) {
-            is AuthState.Unauthenticated -> navController.navigate("login")
-            else -> Unit
+    LaunchedEffect(authState) {
+        if (authState is AuthState.Unauthenticated) {
+            navController.navigate("login") {
+                popUpTo(0)
+            }
         }
     }
 
     Scaffold(
-        bottomBar = { MyBottomNavigation(navController = navController, currentRoute = currentRoute) }
+        bottomBar = { MyBottomNavigation(navController, currentRoute) }
     ) { innerPadding ->
-        content(innerPadding) // Call the content lambda with innerPadding
+        content(innerPadding)
     }
 }

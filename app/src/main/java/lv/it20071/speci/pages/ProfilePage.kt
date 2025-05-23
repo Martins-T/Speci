@@ -1,21 +1,29 @@
 package lv.it20071.speci.pages
 
 import android.util.Log
+import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import lv.it20071.speci.AuthViewModel
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import lv.it20071.speci.MyBottomNavigation
 import lv.it20071.speci.components.ChangePasswordDialog
+import lv.it20071.speci.models.User
+import lv.it20071.speci.viewModels.AuthViewModel
 
 @Composable
 fun ProfilePage(
@@ -23,33 +31,50 @@ fun ProfilePage(
     navController: NavHostController,
     authViewModel: AuthViewModel
 ) {
-    val database = FirebaseDatabase.getInstance("https://speci-7eb3e-default-rtdb.europe-west1.firebasedatabase.app")
-    val usersRef = database.getReference("users")
+    val context = LocalContext.current
+    val db = Firebase.firestore
     val currentUser = authViewModel.currentUser
-    var userProfile by remember { mutableStateOf<Map<String, Any>>(emptyMap()) }
-    var showChangePasswordDialog by remember { mutableStateOf(false) }
+
+    val userDocRef = remember(currentUser) {
+        currentUser?.uid?.let { uid -> db.collection("users").document(uid) }
+    }
+
+    var userProfile by remember { mutableStateOf<User?>(null) }
     var isSpecialist by remember { mutableStateOf(false) }
-    var ratingAsClient by remember { mutableStateOf(0.0) }
-    var ratingAsSpecialist by remember { mutableStateOf(0.0) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(currentUser) {
-        currentUser?.uid?.let { uid ->
-            usersRef.child(uid).addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    userProfile = snapshot.value as? Map<String, Any> ?: emptyMap()
-                    isSpecialist = userProfile["isSpecialist"] as? Boolean ?: false
-                    ratingAsClient = userProfile["ratingAsClient"] as? Double ?: 0.0
-                    ratingAsSpecialist = userProfile["ratingAsSpecialist"] as? Double ?: 0.0
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("ProfilePage", "Error fetching user data: ${error.message}")
-                }
-            })
+    LaunchedEffect(userDocRef) {
+        userDocRef?.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                Log.e("ProfilePage", "Error fetching profile", error)
+                return@addSnapshotListener
+            }
+            val data = snapshot?.data ?: return@addSnapshotListener
+            userProfile = snapshot?.toObject(User::class.java)
+            isSpecialist = (data["isSpecialist"] as? Boolean) ?: false
         }
     }
 
     Scaffold(
+        topBar = {
+            Surface(
+                color = MaterialTheme.colorScheme.primaryContainer,
+                tonalElevation = 4.dp
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Mans Profils",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        },
         bottomBar = {
             MyBottomNavigation(navController = navController, currentRoute = "profile")
         }
@@ -58,140 +83,197 @@ fun ProfilePage(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.Start
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            Text(
-                text = "Mans Profils",
-                fontSize = 32.sp,
-                modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally),
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            userProfile["firstName"]?.let { Text(text = "Vārds: $it", fontSize = 18.sp) }
-            userProfile["lastName"]?.let { Text(text = "Uzvārds: $it", fontSize = 18.sp) }
-            userProfile["address"]?.let { Text(text = "Adrese: $it", fontSize = 18.sp) }
-            userProfile["phoneNumber"]?.let { Text(text = "Telefona numurs: $it", fontSize = 18.sp) }
-            userProfile["skills"]?.let { skills ->
-                val formattedSkills = if (skills is List<*>) skills.joinToString(", ") else skills.toString()
-                Text(text = "Prasmes: $formattedSkills", fontSize = 18.sp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.size(96.dp)
+                ) {
+                    Image(
+                        painter = rememberVectorPainter(Icons.Default.Person),
+                        contentDescription = "Avatar",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "${userProfile?.firstName.orEmpty()} ${userProfile?.lastName.orEmpty()}",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                val desc = userProfile?.description
+                if (!desc.isNullOrBlank()) {
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
             }
-            userProfile["description"]?.let { Text(text = "Apraksts: $it", fontSize = 18.sp) }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "Kļūt par speciālistu:", fontSize = 18.sp)
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(
-                    checked = isSpecialist,
-                    onCheckedChange = {
-                        isSpecialist = it
-                        currentUser?.uid?.let { uid ->
-                            usersRef.child(uid).child("isSpecialist").setValue(it)
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Kontaktinformācija", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    ProfileRow("E-pasts", userProfile?.email.orEmpty())
+                    ProfileRow("Telefons", userProfile?.phoneNumber.orEmpty())
+                    ProfileRow("Mājas adrese", userProfile?.homeAddress.orEmpty())
+                    ProfileRow("Darba adrese", userProfile?.workAddress.orEmpty())
+
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { navController.navigate("edit_profile") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Rediģēt kontaktinformāciju")
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Speciālista statuss", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "Kļūt par speciālistu:", fontSize = 18.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = isSpecialist,
+                            onCheckedChange = { newValue ->
+                                if (newValue && userProfile?.skills.isNullOrEmpty()) {
+                                    Toast.makeText(
+                                        context,
+                                        "Lai kļūtu par speciālistu, jāizvēlas vismaz viena prasme",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    isSpecialist = newValue
+                                    currentUser?.uid?.let { uid ->
+                                        Firebase.firestore.collection("users")
+                                            .document(uid)
+                                            .update("isSpecialist", newValue)
+                                    }
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { navController.navigate("skills") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Izvēlēties prasmes")
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Vērtējums un Atsauksmes", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+
+                    val clientRating = userProfile?.ratingAsClient?.toFloat() ?: 0f
+                    val specRating = userProfile?.ratingAsSpecialist?.toFloat() ?: 0f
+
+                    RatingRow("Kā pasūtītāju", clientRating)
+                    RatingRow("Kā speciālistu", specRating)
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Button(onClick = { navController.navigate("client_reviews") }) {
+                            Text("Pasūtītājs")
+                        }
+                        Button(onClick = { navController.navigate("specialist_reviews") }) {
+                            Text("Speciālists")
                         }
                     }
-                )
-            }
-
-            Text(text = "Vērtējums:", fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
-            Text(text = "Kā pasūtītāju: ${"%.1f".format(ratingAsClient)} zvaigznes", fontSize = 16.sp)
-            Text(text = "Kā speciālistu: ${"%.1f".format(ratingAsSpecialist)} zvaigznes", fontSize = 16.sp)
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Atsauksmes",
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally),
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(
-                    onClick = {
-                        // Action for Pasūtītājs button
-                        navController.navigate("client_reviews")
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary
-                    ),
-                    modifier = Modifier.weight(1f).padding(end = 8.dp)
-                ) {
-                    Text(text = "Pasūtītājs")
-                }
-
-                Button(
-                    onClick = {
-                        // Action for Speciālists button
-                        navController.navigate("specialist_reviews")
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary
-                    ),
-                    modifier = Modifier.weight(1f).padding(start = 8.dp)
-                ) {
-                    Text(text = "Speciālists")
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(
-                onClick = { navController.navigate("edit_profile") },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            ) {
-                Text(text = "Rediģēt profilu")
-            }
+            Spacer(Modifier.height(24.dp))
 
             Button(
                 onClick = { showChangePasswordDialog = true },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary
-                ),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Mainīt paroli")
+                Text("Mainīt paroli")
             }
 
-            Button(
+            Spacer(Modifier.height(8.dp))
+
+            OutlinedButton(
                 onClick = {
                     authViewModel.signOut()
                     navController.navigate("login") {
                         popUpTo("profile") { inclusive = true }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Iziet")
+                Text("Iziet")
             }
+        }
+    }
 
-            if (showChangePasswordDialog) {
-                ChangePasswordDialog(
-                    onDismiss = { showChangePasswordDialog = false },
-                    onChangePassword = { newPassword ->
-                        currentUser?.updatePassword(newPassword)?.addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                Log.d("ProfilePage", "Password updated successfully")
-                            } else {
-                                Log.e("ProfilePage", "Password update failed", task.exception)
-                            }
-                        }
+    if (showChangePasswordDialog) {
+        ChangePasswordDialog(
+            onDismiss = { showChangePasswordDialog = false },
+            onChangePassword = { newPwd ->
+                authViewModel.changePassword(
+                    newPwd,
+                    onSuccess = {
+                        Toast.makeText(context, "Parole veiksmīgi nomainīta", Toast.LENGTH_SHORT)
+                            .show()
+                        showChangePasswordDialog = false
+                    },
+                    onFailure = { e ->
+                        Toast.makeText(
+                            context,
+                            "Neizdevās nomainīt paroli: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 )
             }
-        }
+        )
+    }
+}
+
+@Composable
+private fun ProfileRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+private fun RatingRow(label: String, rating: Float) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        Text("${"%.1f".format(rating)} ★", style = MaterialTheme.typography.bodyLarge)
     }
 }
