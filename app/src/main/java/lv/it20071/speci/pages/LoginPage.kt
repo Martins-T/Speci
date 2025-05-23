@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,34 +24,67 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import lv.it20071.speci.AuthState
-import lv.it20071.speci.AuthViewModel
+import lv.it20071.speci.viewModels.AuthState
+import lv.it20071.speci.viewModels.AuthViewModel
 
 @Composable
-fun LoginPage(modifier: Modifier = Modifier,navController: NavController,authViewModel: AuthViewModel) {
+fun LoginPage(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    authViewModel: AuthViewModel
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val authState = authViewModel.authState.observeAsState()
+    val authState by authViewModel.authState.observeAsState()
+
     val context = LocalContext.current
 
-    LaunchedEffect(authState.value) {
-        when(authState.value){
-            is AuthState.Authenticated -> navController.navigate("orders")
-            is AuthState.Error -> Toast.makeText(context,
-                (authState.value as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Authenticated -> {
+                navController.navigate("orders") {
+                    popUpTo("login") { inclusive = true }
+                }
+            }
+
+            is AuthState.Error -> {
+                Toast.makeText(
+                    context,
+                    (authState as AuthState.Error).message,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
             else -> Unit
         }
     }
 
     Column(
-        modifier = modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Pieteikties", fontSize = 32.sp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Speci",
+                fontSize = 80.sp,
+                color = MaterialTheme.colorScheme.primary,
+                fontStyle = FontStyle.Italic
+            )
+            Spacer(modifier = Modifier.height(48.dp))
+            Text(
+                text = "Pieteikties",
+                fontSize = 28.sp
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -66,39 +101,25 @@ fun LoginPage(modifier: Modifier = Modifier,navController: NavController,authVie
             value = password,
             onValueChange = { password = it },
             label = { Text(text = "Parole") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
         )
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            authViewModel.login(email,password) },
-            enabled = authState.value != AuthState.Loading
-        ) { Text(text = "Ienākt") }
+        Button(
+            onClick = { authViewModel.login(email, password) },
+            enabled = authState !is AuthState.Loading,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Ienākt")
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        TextButton(onClick = {
-            navController.navigate("signup")
-        }) {
-            Text(text = "Nav konta, reģistrējies")
+        TextButton(onClick = { navController.navigate("signup") }) {
+            Text(text = "Nav konta? Reģistrējies")
         }
-
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.google.gms.google.services)
 }
 
@@ -72,6 +73,7 @@ dependencies {
     // Firebase dependencies
     implementation(libs.firebase.auth)
     implementation(libs.firebase.database)
+    implementation(libs.firebase.firestore)
 
     // Navigation and LiveData
     implementation(libs.androidx.runtime.livedata)
@@ -81,7 +83,6 @@ dependencies {
     implementation(libs.android.maps.utils)
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
-    implementation(libs.firebase.firestore)
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

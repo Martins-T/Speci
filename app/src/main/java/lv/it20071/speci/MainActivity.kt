@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import lv.it20071.speci.ui.theme.SpeciTheme
+import lv.it20071.speci.viewModels.AuthViewModel
 
 
 class MainActivity : ComponentActivity() {
@@ -23,7 +24,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpeciTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MyAppNavigation(modifier = Modifier.padding(innerPadding), authViewModel = authViewModel)
+                    MyAppNavigation(
+                        modifier = Modifier.padding(innerPadding),
+                        authViewModel = authViewModel
+                    )
                 }
             }
         }

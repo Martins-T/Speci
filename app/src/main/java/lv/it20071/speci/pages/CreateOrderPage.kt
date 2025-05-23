@@ -1,102 +1,235 @@
 package lv.it20071.speci.pages
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import com.google.firebase.database.FirebaseDatabase
-import lv.it20071.speci.AuthViewModel
+import androidx.navigation.NavHostController
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import lv.it20071.speci.MyBottomNavigation
+import lv.it20071.speci.models.OrderStatus
+import lv.it20071.speci.models.SkillCategories
+import lv.it20071.speci.viewModels.AuthViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateOrderPage(
     modifier: Modifier = Modifier,
-    navController: NavController,
+    navController: NavHostController,
     authViewModel: AuthViewModel
 ) {
-    var personName by remember { mutableStateOf("") }
+    val db = Firebase.firestore
+    val userId = authViewModel.currentUser?.uid ?: ""
+
+    var category by remember { mutableStateOf("") }
+    var subcategory by remember { mutableStateOf("") }
     var task by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
     var dueDate by remember { mutableStateOf("") }
-    var currentPrice by remember { mutableStateOf("") }
+    var budget by remember { mutableStateOf("") }
 
-    val database = FirebaseDatabase.getInstance("https://speci-7eb3e-default-rtdb.europe-west1.firebasedatabase.app")
-    val ordersRef = database.getReference("tasks")
+    val categories = SkillCategories.categories
+    var categoryExpanded by remember { mutableStateOf(false) }
+    var subcategoryExpanded by remember { mutableStateOf(false) }
 
-    Scaffold { innerPadding ->
+    var categoryError by remember { mutableStateOf(false) }
+    val canSubmit = category.isNotBlank()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "Izveidot pasūtījumu",
+                        modifier = Modifier.padding(start = 48.dp),
+                        maxLines = 1
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Atpakaļ"
+                        )
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            MyBottomNavigation(
+                navController = navController,
+                currentRoute = "create_order"
+            )
+        }
+    ) { innerPadding ->
         Column(
             modifier = modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Start
         ) {
-            Text(text = "Izveidot pasūtījumu", fontSize = 32.sp, modifier = Modifier.padding(16.dp))
 
-            OutlinedTextField(
-                value = personName,
-                onValueChange = { personName = it },
-                label = { Text("Jūsu vārds") },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            )
+            Text("Kategorija *", fontSize = 16.sp)
+            ExposedDropdownMenuBox(
+                expanded = categoryExpanded,
+                onExpandedChange = { categoryExpanded = !categoryExpanded }
+            ) {
+                TextField(
+                    value = category,
+                    onValueChange = {},
+                    readOnly = true,
+                    isError = categoryError,
+                    placeholder = { Text("Izvēlies kategoriju") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(
+                    expanded = categoryExpanded,
+                    onDismissRequest = { categoryExpanded = false }
+                ) {
+                    categories.keys.forEach { key ->
+                        DropdownMenuItem(
+                            text = { Text(key) },
+                            onClick = {
+                                category = key
+                                subcategory = ""
+                                categoryError = false
+                                categoryExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+            if (categoryError) {
+                Text(
+                    text = "Obligāti jāizvēlas kategorija",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            if (category.isNotBlank()) {
+                Text("Apakškategorija (nav obligāta)", fontSize = 16.sp)
+                ExposedDropdownMenuBox(
+                    expanded = subcategoryExpanded,
+                    onExpandedChange = { subcategoryExpanded = !subcategoryExpanded }
+                ) {
+                    TextField(
+                        value = subcategory,
+                        onValueChange = {},
+                        readOnly = true,
+                        placeholder = { Text("Izvēlies apakškategoriju") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = subcategoryExpanded)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = subcategoryExpanded,
+                        onDismissRequest = { subcategoryExpanded = false }
+                    ) {
+                        categories[category]?.forEach { sub ->
+                            DropdownMenuItem(
+                                text = { Text(sub) },
+                                onClick = {
+                                    subcategory = sub
+                                    subcategoryExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+            }
 
             OutlinedTextField(
                 value = task,
                 onValueChange = { task = it },
                 label = { Text("Uzdevuma apraksts") },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
             )
 
             OutlinedTextField(
                 value = location,
                 onValueChange = { location = it },
                 label = { Text("Atrašanās vieta") },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
             )
 
             OutlinedTextField(
                 value = dueDate,
                 onValueChange = { dueDate = it },
                 label = { Text("Termiņš (YYYY-MM-DD)") },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
             )
 
             OutlinedTextField(
-                value = currentPrice,
-                onValueChange = { currentPrice = it },
+                value = budget,
+                onValueChange = { budget = it },
                 label = { Text("Budžets (€)") },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(20.dp))
 
             Button(
                 onClick = {
-                    val newOrder = Order(
-                        personName = personName,
-                        task = task,
-                        location = location,
-                        dueDate = dueDate,
-                        currentPrice = currentPrice.toDoubleOrNull() ?: 0.0
+                    if (category.isBlank()) {
+                        categoryError = true
+                        return@Button
+                    }
+                    val order = hashMapOf(
+                        "createdBy" to userId,
+                        "task" to task,
+                        "location" to location,
+                        "dueDate" to dueDate,
+                        "budget" to (budget.toDoubleOrNull() ?: 0.0),
+                        "category" to category,
+                        "subcategory" to subcategory,
+                        "status" to OrderStatus.OPEN,
+                        "timestamp" to Timestamp.now()
                     )
-                    ordersRef.push().setValue(newOrder) // Save the order to Firebase
-                    navController.navigate("orders")
+                    db.collection("orders")
+                        .add(order)
+                        .addOnSuccessListener {
+                            navController.navigate("orders")
+                        }
                 },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                enabled = canSubmit,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Izveidot pasūtījumu")
-            }
-
-            TextButton(onClick = { navController.navigate("orders") }) {
-                Text("Atpakaļ uz pasūtījumiem")
+                Text("Izveidot pasūtījumu")
             }
         }
     }
